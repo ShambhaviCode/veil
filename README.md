@@ -155,5 +155,4 @@ MIT
 **Shambhavi** 
 ---
 
-> **VEIL separates the proof from the person.**
 
