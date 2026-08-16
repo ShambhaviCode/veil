@@ -1,0 +1,114 @@
+// VEIL — report_verification.compact
+//
+// This is a design-level sketch of the Compact circuit VEIL's privacy layer
+// is built around. It documents the contract this hackathon's backend
+// (server.js) stands in for — see README.md for why the real Midnight
+// testnet/wallet stack couldn't be wired up in this sandboxed environment,
+// and exactly what porting this to a live deployment involves.
+//
+// Compact syntax below is illustrative of the target circuit shape, not
+// compiler-verified against a specific Midnight SDK version — the writeup
+// notes the API surface was moving quickly during the hackathon and the
+// team tracked current docs rather than older examples.
+
+pragma language_version 0.14;
+
+import CompactStandardLibrary;
+
+// ---------------------------------------------------------------------------
+// Public (on-chain) state
+// ---------------------------------------------------------------------------
+
+// Merkle root of hashed institutional credentials. Populated off-chain by
+// the institution (e.g. hashing each valid student/faculty ID with a
+// per-holder secret) and committed on-chain. The root is public; the
+// underlying (id, secret) pairs and the leaves themselves are not.
+export ledger eligibilityRoot: Bytes<32>;
+
+// Set of pseudonymous reporter identities that have completed eligibility
+// verification. Membership here proves "some valid credential produced
+// this pseudonym" without linking back to which one.
+export ledger issuedPseudonyms: Set<Bytes<32>>;
+
+// Append-only, content-blind audit log. Each entry links to the previous
+// entry's hash plus a hash of the off-chain event content — proving the
+// sequence of events for a report hasn't been reordered or deleted,
+// without ever putting report content on-chain.
+export ledger auditChain: Map<Bytes<32>, AuditEntry>; // reportId -> latest entry
+
+struct AuditEntry {
+  eventType: Bytes<32>;
+  timestamp: Uint<64>;
+  contentHash: Bytes<32>;
+  previousHash: Bytes<32>;
+  entryHash: Bytes<32>;
+}
+
+// ---------------------------------------------------------------------------
+// Circuit: verifyEligibility
+//
+// Witness (private) inputs: institutionalId, credentialSecret, merklePath.
+// Public inputs: eligibilityRoot (read from ledger), a freshly-generated
+// pseudonymId chosen by the caller's wallet.
+//
+// Proves: "I know a (id, secret) pair whose commitment hash is a leaf in
+// the tree committed to by eligibilityRoot" — without revealing id, secret,
+// or which leaf. On success, registers pseudonymId as eligible to report.
+// This circuit is what server.js's commitmentHash() + set-membership check
+// stands in for; the real version replaces "check array includes X" with
+// a zero-knowledge Merkle membership proof verified on-chain.
+// ---------------------------------------------------------------------------
+
+export circuit verifyEligibility(
+  institutionalId: Bytes<32>,
+  credentialSecret: Bytes<32>,
+  merklePath: MerklePath<10>,
+  pseudonymId: Bytes<32>
+): [] {
+  const leaf = persistentHash([institutionalId, credentialSecret]);
+  const computedRoot = merkleTreeRoot(leaf, merklePath);
+  assert(computedRoot == eligibilityRoot, "not a member of the eligible set");
+  assert(!issuedPseudonyms.member(pseudonymId), "pseudonym already issued");
+  issuedPseudonyms.insert(pseudonymId);
+}
+
+// ---------------------------------------------------------------------------
+// Circuit: appendAuditEvent
+//
+// Called whenever a report changes state (submitted, status changed, a
+// message sent). Takes a hash of the off-chain content (the content itself
+// lives in the application's off-chain store, e.g. an encrypted DB row) so
+// the chain proves sequence and non-tampering without exposing what was
+// said or by whom beyond the pseudonym already on record.
+// ---------------------------------------------------------------------------
+
+export circuit appendAuditEvent(
+  reportId: Bytes<32>,
+  eventType: Bytes<32>,
+  contentHash: Bytes<32>,
+  timestamp: Uint<64>
+): [] {
+  const prior = auditChain.lookup(reportId);
+  const previousHash = prior.isSome ? prior.value.entryHash : Bytes<32>.default;
+  const entryHash = persistentHash([previousHash, eventType, contentHash, timestamp]);
+  auditChain.insert(reportId, AuditEntry {
+    eventType: eventType,
+    timestamp: timestamp,
+    contentHash: contentHash,
+    previousHash: previousHash,
+    entryHash: entryHash,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Circuit: verifyChainIntegrity (view/query — no state change)
+//
+// Lets anyone recompute the hash chain for a report and confirm no entry
+// was altered. This is the on-chain counterpart of the /api/verify/:id
+// route in server.js.
+// ---------------------------------------------------------------------------
+
+export circuit verifyChainIntegrity(reportId: Bytes<32>): Boolean {
+  const entry = auditChain.lookup(reportId);
+  return entry.isSome;
+}

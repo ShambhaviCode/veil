@@ -1,0 +1,11 @@
+{
+  "eligibleCommitments": [
+    "e86c6925bd23ef851bc7008aa51ed47bd3632a6e569730cca0992ff83efdda01",
+    "8bf9065d4de3314160b7342799dd2ae684ef3dc11a5b561043217758ab85291d",
+    "d91bf7a6e40496c7ad941a3b67628cfbe0fd65d4f6fc0c64d37c35e2c4a4786a",
+    "c184dca85adcf7ad8ea562be3205c835989987bee2455209327ee12a58433a3c"
+  ],
+  "reports": {},
+  "pseudonyms": {},
+  "adminToken": "veil-admin-demo-token"
+}

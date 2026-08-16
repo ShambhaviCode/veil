@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VEIL — Speak up. Stay private.</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand" onclick="Router.go('home')">
+      <span class="brand-mark">◆</span>
+      <span>VEIL</span>
+    </div>
+    <nav class="tabs">
+      <button data-view="home" class="tab active">Home</button>
+      <button data-view="reporter" class="tab">Reporter</button>
+      <button data-view="admin" class="tab">Admin</button>
+      <button data-view="verify" class="tab">Verify a Report</button>
+    </nav>
+  </header>
+
+  <main id="app"></main>
+
+  <footer class="footer">
+    <p>VEIL — a privacy-preserving campus incident reporting demo. Identity → Eligibility → Report → Verification.</p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
