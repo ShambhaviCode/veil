@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # VEIL — Speak up. Stay private.
 
 A privacy-preserving campus incident reporting platform. Reporters prove
@@ -111,3 +112,6 @@ veil/
   evidence management as a "what's next" item, not part of the MVP.
 - Single institution only — multi-institution/cross-verification is also a
   "what's next" item in the original writeup.
+=======
+# veil
+>>>>>>> ad9062e283ac74424bc0b56e22d5371527f1d0e4
