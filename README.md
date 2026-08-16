@@ -152,8 +152,7 @@ MIT
 
 ## 👩‍💻 Developer
 
-**Shambhavi** · [GitHub](https://github.com/ShambhaviCode)
-
+**Shambhavi** 
 ---
 
 > **VEIL separates the proof from the person.**
