@@ -8,6 +8,8 @@
 
 > **Speak up. Stay private.**
 
+**[Live demo](https://veil-zeta-rosy.vercel.app)** · [Screenshots](#-screenshots) · [Run locally](#run-locally)
+
 ---
 
 ## 💡 Inspiration
@@ -43,6 +45,44 @@ VEIL lets verified institutional members submit and track incident reports using
 * Maintain an audit trail
 
 **Verified reporter. Protected identity. Accountable report.**
+
+---
+
+## 🔄 How It Works
+
+The raw credential never leaves the browser, the report is filed under a pseudonym, and anyone can check a report's audit trail without seeing its content.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor R as Reporter
+    participant B as Browser
+    participant S as VEIL server
+    actor A as Administrator
+    actor P as Anyone
+
+    R->>B: Institutional ID + secret
+    B->>B: commitment = SHA-256(id:secret)
+    B->>S: POST /api/verify-eligibility (commitment only)
+    S->>S: Is commitment in the eligible set?
+    S-->>B: Pseudonym + session token
+    B->>S: POST /api/reports (pseudonym, category, description)
+    S->>S: Append "report_submitted" to the report's hash chain
+    A->>S: Review, reply, update status
+    S->>S: Append each action to the hash chain
+    P->>S: GET /api/verify/:reportId
+    S-->>P: Chain intact? Event types, times and hashes only
+```
+
+---
+
+## 📸 Screenshots
+
+| Home | Reporter dashboard |
+| --- | --- |
+| ![VEIL home page explaining how identity, eligibility, report and verification are separated](docs/screenshots/home.png) | ![Reporter dashboard with a submitted report under a pseudonym](docs/screenshots/reporter.png) |
+| **Administrator dashboard** | **Public verification** |
+| ![Administrator view with status, reply and hash-chained audit trail](docs/screenshots/admin.png) | ![Public verification showing an intact audit chain without report content](docs/screenshots/verify.png) |
 
 ---
 
