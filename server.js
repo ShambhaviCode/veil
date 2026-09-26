@@ -18,9 +18,14 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 const { URL } = require('url');
 
-const DATA_FILE = path.join(__dirname, 'data', 'store.json');
+// Vercel's filesystem is read-only apart from the temp directory, so the demo
+// store lives there on Vercel. VEIL_DATA_DIR overrides the location anywhere.
+const DATA_DIR = process.env.VEIL_DATA_DIR
+  || (process.env.VERCEL ? path.join(os.tmpdir(), 'veil') : path.join(__dirname, 'data'));
+const DATA_FILE = path.join(DATA_DIR, 'store.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 8787;
 
@@ -31,7 +36,7 @@ const PORT = process.env.PORT || 8787;
 function loadStore() {
   if (!fs.existsSync(DATA_FILE)) {
     // data/ is gitignored, so it doesn't exist on a fresh clone.
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+    fs.mkdirSync(DATA_DIR, { recursive: true });
     const initial = {
       // Simulated "eligibility set": in a real deployment this is a Merkle
       // root of hashed institutional credentials, checked via a Compact
