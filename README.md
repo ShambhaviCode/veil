@@ -1,5 +1,7 @@
 # 🕯️ VEIL
 
+[![Tests](https://github.com/ShambhaviCode/veil/actions/workflows/test.yml/badge.svg)](https://github.com/ShambhaviCode/veil/actions/workflows/test.yml)
+
 ### Privacy-Preserving Campus Incident Reporting
 
 **Prove you're eligible to report without revealing who you are.**
