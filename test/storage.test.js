@@ -47,7 +47,11 @@ function cleanup(t) {
         child.kill();
         await exited;
       }
-      for (const dir of state.dirs) fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+      for (const dir of state.dirs) {
+        // The POSIX test makes its app dir read-only; undo that so it can be deleted.
+        if (process.platform !== 'win32') fs.chmodSync(dir, 0o755);
+        fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
+      }
     });
   }
   return cleanups.get(t);
