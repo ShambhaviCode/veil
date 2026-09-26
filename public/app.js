@@ -213,7 +213,7 @@ function renderReportRow(r, reporterView) {
   const row = el(`
     <div class="report-row">
       <div class="report-row-top">
-        <div><span class="report-id">${r.id}</span> — <b>${r.category}</b></div>
+        <div><span class="report-id">${r.id}</span> — <b>${escapeHtml(r.category)}</b></div>
         <span class="status-pill status-${r.status}">${statusLabel(r.status)}</span>
       </div>
       <p style="margin:10px 0 0; font-size:0.88rem; color:var(--text-dim);">${escapeHtml(r.description)}</p>

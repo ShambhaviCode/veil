@@ -24,6 +24,9 @@ const DATA_FILE = path.join(__dirname, 'data', 'store.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 8787;
 
+// Must match the <select id="r-category"> options in public/app.js.
+const REPORT_CATEGORIES = ['Safety Concern', 'Harassment', 'Bullying', 'Academic Misconduct', 'Other'];
+
 // ---------------------------------------------------------------------------
 // Storage
 // ---------------------------------------------------------------------------
@@ -138,7 +141,8 @@ const MIME = {
 function serveStatic(req, res, pathname) {
   let filePath = pathname === '/' ? '/index.html' : pathname;
   filePath = path.join(PUBLIC_DIR, filePath);
-  if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403); return res.end('Forbidden'); }
+  // Compare against PUBLIC_DIR + separator so a sibling like "public-old/" can't pass the check.
+  if (!filePath.startsWith(PUBLIC_DIR + path.sep)) { res.writeHead(403); return res.end('Forbidden'); }
   fs.readFile(filePath, (err, content) => {
     if (err) { res.writeHead(404); return res.end('Not found'); }
     const ext = path.extname(filePath);
@@ -198,8 +202,14 @@ async function handleSubmitReport(req, res) {
   if (!checkPseudoAuth(store, pseudoId, pseudoToken)) {
     return sendJSON(res, 401, { error: 'Invalid or unverified pseudonymous identity.' });
   }
-  if (!category || !description || description.trim().length < 10) {
+  if (!REPORT_CATEGORIES.includes(category)) {
+    return sendJSON(res, 400, { error: 'Unknown report category.' });
+  }
+  if (typeof description !== 'string' || description.trim().length < 10) {
     return sendJSON(res, 400, { error: 'Category and a meaningful description are required.' });
+  }
+  if (evidenceNote != null && typeof evidenceNote !== 'string') {
+    return sendJSON(res, 400, { error: 'Evidence note must be text.' });
   }
   const reportId = 'RPT-' + crypto.randomBytes(5).toString('hex').toUpperCase();
   const report = {
@@ -241,7 +251,7 @@ async function handleReporterMessage(req, res, reportId) {
   if (!checkPseudoAuth(store, pseudoId, pseudoToken) || report.pseudoReporterId !== pseudoId) {
     return sendJSON(res, 401, { error: 'Not authorized for this report.' });
   }
-  if (!text || !text.trim()) return sendJSON(res, 400, { error: 'Message text required.' });
+  if (typeof text !== 'string' || !text.trim()) return sendJSON(res, 400, { error: 'Message text required.' });
   const msg = { from: 'reporter', text: text.trim(), at: new Date().toISOString() };
   report.messages.push(msg);
   appendAuditEvent(report, 'reporter_message', { length: text.length });
@@ -287,7 +297,7 @@ async function handleAdminMessage(req, res, reportId) {
   const { text, requestInfo } = await readBody(req);
   const report = store.reports[reportId];
   if (!report) return sendJSON(res, 404, { error: 'Report not found.' });
-  if (!text || !text.trim()) return sendJSON(res, 400, { error: 'Message text required.' });
+  if (typeof text !== 'string' || !text.trim()) return sendJSON(res, 400, { error: 'Message text required.' });
   const msg = { from: 'admin', text: text.trim(), at: new Date().toISOString() };
   report.messages.push(msg);
   if (requestInfo) report.status = 'info_requested';
