@@ -132,6 +132,12 @@ http://localhost:8787
 
 Demo credentials and an admin token are printed on startup.
 
+Run the tests (Node 18+, no dependencies):
+
+```bash
+node --test
+```
+
 ---
 
 ## ⚠️ Current Status

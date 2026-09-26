@@ -20,6 +20,7 @@ const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
 const { URL } = require('url');
+const { appendAuditEvent, verifyAuditChain } = require('./audit');
 
 // Where the JSON store lives: VEIL_DATA_DIR when set, otherwise data/ next to
 // this file, or the temp directory on Vercel (read-only apart from /tmp).
@@ -95,40 +96,6 @@ function commitmentHash(id, secret) {
 
 function sha256(input) {
   return crypto.createHash('sha256').update(input).digest('hex');
-}
-
-// ---------------------------------------------------------------------------
-// Audit hash-chain — simulates the "verifiable, tamper-evident, but
-// content-blind" property of an on-chain record. Each event for a report
-// links to the previous event's hash. Content of the report never enters
-// the chain — only a hash of (event type + timestamp + previous hash +
-// content hash), matching the "identity/eligibility/report/verification"
-// separation described in the writeup.
-// ---------------------------------------------------------------------------
-
-function appendAuditEvent(report, type, contentForHash) {
-  const prevHash = report.auditChain.length
-    ? report.auditChain[report.auditChain.length - 1].hash
-    : report.genesisHash;
-  const timestamp = new Date().toISOString();
-  const contentHash = sha256(JSON.stringify(contentForHash ?? {}));
-  const hash = sha256(`${prevHash}:${type}:${timestamp}:${contentHash}`);
-  report.auditChain.push({ type, timestamp, hash });
-  return hash;
-}
-
-function verifyAuditChain(report) {
-  let prevHash = report.genesisHash;
-  for (const event of report.auditChain) {
-    // We don't have the original contentForHash at verify-time by design
-    // (that's the point — verification checks the chain wasn't spliced,
-    // not the content). Real integrity re-check happens where content
-    // hashes are recomputed at write time; here we confirm monotonic
-    // linkage and no gaps.
-    if (!event.hash || !event.type || !event.timestamp) return false;
-    prevHash = event.hash;
-  }
-  return true;
 }
 
 // ---------------------------------------------------------------------------
