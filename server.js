@@ -30,6 +30,8 @@ const PORT = process.env.PORT || 8787;
 
 function loadStore() {
   if (!fs.existsSync(DATA_FILE)) {
+    // data/ is gitignored, so it doesn't exist on a fresh clone.
+    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
     const initial = {
       // Simulated "eligibility set": in a real deployment this is a Merkle
       // root of hashed institutional credentials, checked via a Compact
