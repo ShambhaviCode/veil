@@ -46,6 +46,34 @@ VEIL lets verified institutional members submit and track incident reports using
 
 ---
 
+## 🔄 How It Works
+
+The raw credential never leaves the browser, the report is filed under a pseudonym, and anyone can check a report's audit trail without seeing its content.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor R as Reporter
+    participant B as Browser
+    participant S as VEIL server
+    actor A as Administrator
+    actor P as Anyone
+
+    R->>B: Institutional ID + secret
+    B->>B: commitment = SHA-256(id:secret)
+    B->>S: POST /api/verify-eligibility (commitment only)
+    S->>S: Is commitment in the eligible set?
+    S-->>B: Pseudonym + session token
+    B->>S: POST /api/reports (pseudonym, category, description)
+    S->>S: Append "report_submitted" to the report's hash chain
+    A->>S: Review, reply, update status
+    S->>S: Append each action to the hash chain
+    P->>S: GET /api/verify/:reportId
+    S-->>P: Chain intact? Event types, times and hashes only
+```
+
+---
+
 ## 📸 Screenshots
 
 | Home | Reporter dashboard |
