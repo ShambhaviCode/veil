@@ -61,7 +61,10 @@ function tempDir(t, prefix) {
 
 function makeApp(t) {
   const dir = tempDir(t, 'veil-app-');
-  fs.copyFileSync(path.join(ROOT, 'server.js'), path.join(dir, 'server.js'));
+  // Copy every top-level module server.js might require, plus the static files.
+  for (const file of fs.readdirSync(ROOT)) {
+    if (file.endsWith('.js')) fs.copyFileSync(path.join(ROOT, file), path.join(dir, file));
+  }
   fs.cpSync(path.join(ROOT, 'public'), path.join(dir, 'public'), { recursive: true });
   return dir;
 }
