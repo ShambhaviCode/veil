@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { appendAuditEvent, verifyAuditChain } = require('../server.js');
+const { appendAuditEvent, auditEventHash, verifyAuditChain } = require('../audit.js');
 
 function makeReport() {
   const report = { genesisHash: 'genesis-hash', auditChain: [] };
@@ -53,4 +53,12 @@ test('events without stored link data fail instead of passing blindly', () => {
   const { type, timestamp, hash } = report.auditChain[0];
   report.auditChain[0] = { type, timestamp, hash };
   assert.equal(verifyAuditChain(report), false);
+});
+
+test('each event hash commits to the previous hash, type, time and content hash', () => {
+  const report = makeReport();
+  const [first, second] = report.auditChain;
+  assert.equal(first.prevHash, 'genesis-hash');
+  assert.equal(second.prevHash, first.hash);
+  assert.equal(second.hash, auditEventHash(first.hash, second.type, second.timestamp, second.contentHash));
 });
