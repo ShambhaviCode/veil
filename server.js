@@ -86,20 +86,28 @@ function appendAuditEvent(report, type, contentForHash) {
     : report.genesisHash;
   const timestamp = new Date().toISOString();
   const contentHash = sha256(JSON.stringify(contentForHash ?? {}));
-  const hash = sha256(`${prevHash}:${type}:${timestamp}:${contentHash}`);
-  report.auditChain.push({ type, timestamp, hash });
+  const hash = auditEventHash(prevHash, type, timestamp, contentHash);
+  // prevHash and contentHash are stored so the link can be recomputed at
+  // verify time. contentHash is never exposed by the public verify route.
+  report.auditChain.push({ type, timestamp, prevHash, contentHash, hash });
   return hash;
+}
+
+function auditEventHash(prevHash, type, timestamp, contentHash) {
+  return sha256(`${prevHash}:${type}:${timestamp}:${contentHash}`);
 }
 
 function verifyAuditChain(report) {
   let prevHash = report.genesisHash;
   for (const event of report.auditChain) {
-    // We don't have the original contentForHash at verify-time by design
-    // (that's the point — verification checks the chain wasn't spliced,
-    // not the content). Real integrity re-check happens where content
-    // hashes are recomputed at write time; here we confirm monotonic
-    // linkage and no gaps.
-    if (!event.hash || !event.type || !event.timestamp) return false;
+    // The original content isn't needed: each event commits to a hash of
+    // it, so recomputing the event hash detects edits, reordering, and
+    // removed or inserted events without revealing report content.
+    // Events written before prevHash/contentHash were stored can't be
+    // recomputed, so they fail verification rather than passing blindly.
+    if (!event.hash || !event.type || !event.timestamp || !event.contentHash) return false;
+    if (event.prevHash !== prevHash) return false;
+    if (auditEventHash(prevHash, event.type, event.timestamp, event.contentHash) !== event.hash) return false;
     prevHash = event.hash;
   }
   return true;
@@ -367,12 +375,17 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`VEIL server running at http://localhost:${PORT}`);
-  console.log(`Demo admin token: ${loadStore().adminToken}`);
-  console.log(`Demo eligible credentials (id / secret):`);
-  console.log(`  STU-10234 / maple-river`);
-  console.log(`  STU-88823 / copper-fox`);
-  console.log(`  STU-55190 / quiet-harbor`);
-  console.log(`  FAC-00019 / granite-owl`);
-});
+// Only listen when run directly, so tests can require() this module.
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`VEIL server running at http://localhost:${PORT}`);
+    console.log(`Demo admin token: ${loadStore().adminToken}`);
+    console.log(`Demo eligible credentials (id / secret):`);
+    console.log(`  STU-10234 / maple-river`);
+    console.log(`  STU-88823 / copper-fox`);
+    console.log(`  STU-55190 / quiet-harbor`);
+    console.log(`  FAC-00019 / granite-owl`);
+  });
+}
+
+module.exports = { appendAuditEvent, verifyAuditChain };
