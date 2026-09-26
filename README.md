@@ -145,9 +145,9 @@ contracts/report_verification.compact
 **The contract is not yet deployed on-chain.**
 
 Reports are kept in a JSON file (`data/store.json` locally, or the directory
-set by `VEIL_DATA_DIR`). On Vercel the store lives in the function's temporary
-directory, so live-demo data is not persistent and can reset between requests
-that land on different instances.
+set by `VEIL_DATA_DIR`). On Vercel, or wherever `data/` isn't writable, the
+store lives in the system temp directory instead, so live-demo data is not
+persistent and can reset between requests that land on different instances.
 
 ---
 

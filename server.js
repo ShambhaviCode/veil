@@ -21,11 +21,14 @@ const crypto = require('crypto');
 const os = require('os');
 const { URL } = require('url');
 
-// Vercel's filesystem is read-only apart from the temp directory, so the demo
-// store lives there on Vercel. VEIL_DATA_DIR overrides the location anywhere.
-const DATA_DIR = process.env.VEIL_DATA_DIR
-  || (process.env.VERCEL ? path.join(os.tmpdir(), 'veil') : path.join(__dirname, 'data'));
-const DATA_FILE = path.join(DATA_DIR, 'store.json');
+// Where the JSON store lives: VEIL_DATA_DIR when set, otherwise data/ next to
+// this file, or the temp directory on Vercel (read-only apart from /tmp).
+// If data/ turns out to be read-only on another host, loadStore() falls back
+// to the temp directory.
+const TMP_DATA_DIR = path.join(os.tmpdir(), 'veil');
+const READ_ONLY_ERRORS = new Set(['EROFS', 'EACCES', 'EPERM']);
+let dataDir = process.env.VEIL_DATA_DIR
+  || (process.env.VERCEL ? TMP_DATA_DIR : path.join(__dirname, 'data'));
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const PORT = process.env.PORT || 8787;
 
@@ -33,10 +36,12 @@ const PORT = process.env.PORT || 8787;
 // Storage
 // ---------------------------------------------------------------------------
 
+function dataFile() {
+  return path.join(dataDir, 'store.json');
+}
+
 function loadStore() {
-  if (!fs.existsSync(DATA_FILE)) {
-    // data/ is gitignored, so it doesn't exist on a fresh clone.
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(dataFile())) {
     const initial = {
       // Simulated "eligibility set": in a real deployment this is a Merkle
       // root of hashed institutional credentials, checked via a Compact
@@ -47,13 +52,27 @@ function loadStore() {
       pseudonyms: {},        // pseudoId -> { commitment, createdAt }
       adminToken: 'veil-admin-demo-token', // demo only, see README
     };
-    fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2));
+    try {
+      createStore(initial);
+    } catch (err) {
+      // An explicit VEIL_DATA_DIR is never silently replaced.
+      if (process.env.VEIL_DATA_DIR || dataDir === TMP_DATA_DIR || !READ_ONLY_ERRORS.has(err.code)) throw err;
+      console.warn(`VEIL: ${dataDir} is not writable (${err.code}); storing data in ${TMP_DATA_DIR} instead.`);
+      dataDir = TMP_DATA_DIR;
+      if (!fs.existsSync(dataFile())) createStore(initial);
+    }
   }
-  return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+  return JSON.parse(fs.readFileSync(dataFile(), 'utf-8'));
+}
+
+function createStore(initial) {
+  // data/ is gitignored, so it doesn't exist on a fresh clone.
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(dataFile(), JSON.stringify(initial, null, 2));
 }
 
 function saveStore(store) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(store, null, 2));
+  fs.writeFileSync(dataFile(), JSON.stringify(store, null, 2));
 }
 
 // Precompute commitments for a small set of demo "valid student IDs" so
